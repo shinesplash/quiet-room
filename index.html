@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>Fan Quieter</title>
+<style>
+  :root { --bg:#0b0d12; --card:#151922; --line:#232938; --txt:#e8ebf2; --dim:#8a93a8; --acc:#4ea1ff; --ok:#46d68c; --warn:#ffb454; --bad:#ff6b6b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; background:var(--bg); color:var(--txt); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  body { padding:14px 14px 40px; max-width:560px; margin:0 auto; font-size:17px; line-height:1.4; }
+  h1 { font-size:22px; margin:6px 0 2px; font-weight:650; }
+  .sub { color:var(--dim); font-size:14px; margin-bottom:10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:12px 0; }
+  .card h2 { font-size:15px; margin:0 0 8px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  ol { margin:4px 0 0 20px; padding:0; } li { margin:4px 0; }
+  #status { font-size:21px; font-weight:650; min-height:30px; }
+  #status.good { color:var(--ok); } #status.warn { color:var(--warn); } #status.bad { color:var(--bad); }
+  .bar { height:8px; background:#222836; border-radius:6px; overflow:hidden; margin-top:10px; }
+  .bar > div { height:100%; width:0; background:var(--acc); transition:width .3s; }
+  button { font:inherit; color:var(--txt); background:#222836; border:1px solid #2f374a; border-radius:14px; padding:14px 16px; min-height:56px; width:100%; margin:6px 0; touch-action:manipulation; }
+  button:active { filter:brightness(1.3); }
+  button:disabled { opacity:.4; }
+  button.big { font-size:26px; font-weight:700; min-height:92px; border-radius:20px; background:#1d6fd6; border-color:#3b8cf0; letter-spacing:.03em; }
+  button.big.stop { background:#b43b3b; border-color:#d65a5a; }
+  button.quick { background:#1e4d3a; border-color:#2f7a5b; }
+  button.on { background:#1e4d3a; border-color:#46d68c; }
+  .row { display:flex; gap:10px; } .row > * { flex:1; }
+  .tone { border-top:1px solid var(--line); padding:10px 0; display:grid; grid-template-columns:1fr auto; gap:2px 12px; align-items:center; }
+  .tone:first-child { border-top:0; }
+  .tone .f { font-size:19px; font-weight:650; } .tone .meta { color:var(--dim); font-size:14px; grid-column:1; }
+  .tone .red { font-size:34px; font-weight:750; text-align:right; grid-row:1 / span 2; grid-column:2; font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; font-size:13px; border-radius:20px; padding:2px 9px; margin-left:8px; vertical-align:middle; background:#2a3042; color:var(--dim); }
+  .pill.ok { background:#16382a; color:var(--ok); } .pill.warn { background:#3d2f12; color:var(--warn); } .pill.bad { background:#3d1a1a; color:var(--bad); }
+  .big-num { font-size:30px; font-weight:750; font-variant-numeric:tabular-nums; }
+  .kv { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:4px 0; } .kv span:first-child { color:var(--dim); }
+  input[type=range] { width:100%; height:44px; accent-color:var(--acc); }
+  .msg { border-radius:14px; padding:12px 14px; margin:12px 0; display:none; font-size:16px; }
+  .msg.show { display:block; } .msg.err { background:#3d1a1a; border:1px solid #7a2f2f; } .msg.info { background:#16283d; border:1px solid #2f5a8a; }
+  table { width:100%; border-collapse:collapse; font-size:15px; font-variant-numeric:tabular-nums; } td,th { padding:4px 6px; text-align:right; border-top:1px solid var(--line); } th:first-child,td:first-child { text-align:left; } th { color:var(--dim); font-weight:500; border-top:0; }
+  .dim { color:var(--dim); font-size:14px; } .empty { color:var(--dim); padding:6px 0; }
+  .cmpstate { font-size:26px; font-weight:750; text-align:center; padding:8px; border-radius:12px; margin:6px 0; } .cmpstate.on { background:#16382a; color:var(--ok); } .cmpstate.off { background:#3d1a1a; color:var(--bad); }
+</style>
+</head>
+<body>
+<h1>Fan Quieter</h1>
+<div class="sub">Experimental: cancels the steady hum of a fan using only this phone's microphone and speaker.</div>
+
+<div id="msg" class="msg err"></div>
+<div id="info" class="msg info"></div>
+
+<div class="card">
+  <h2>How to use</h2>
+  <ol>
+    <li>Put the phone on your pillow right next to your ear, <b>bottom edge (the microphone) closest to your ear</b>, screen up.</li>
+    <li>Turn the fans on.</li>
+    <li>Press <b>START</b> and then <b>stay still</b>. Everything else is automatic (about 20 seconds).</li>
+  </ol>
+  <div class="dim" style="margin-top:8px">Only the steady hum can be cancelled, not the "whoosh" of moving air. The quiet spot is just a few centimetres around the microphone.</div>
+</div>
+
+<div class="card">
+  <div id="status">Ready. Press START.</div>
+  <div class="bar"><div id="bar"></div></div>
+  <button id="btnStart" class="big">START</button>
+  <button id="btnQuick" class="quick" style="display:none">Quick start from learned profile</button>
+  <div id="profileInfo" class="dim"></div>
+</div>
+
+<div class="card">
+  <h2>Fan tones found</h2>
+  <div id="toneList"><div class="empty">Nothing yet. Press START.</div></div>
+</div>
+
+<div class="card">
+  <h2>Overall level (uncalibrated, dB re full scale)</h2>
+  <div class="kv"><span>Before (room only)</span><span id="bbBefore" class="big-num">-</span></div>
+  <div class="kv"><span>Now</span><span id="bbNow" class="big-num">-</span></div>
+  <div class="kv"><span>Fan hum tones, total</span><span id="tonesRed" class="big-num">-</span></div>
+  <div class="dim">"Fan hum tones" is the part this app can cancel. The overall number also contains the whoosh and room noise, so it moves much less.</div>
+</div>
+
+<div class="card">
+  <h2>Strength</h2>
+  <div class="kv"><span>Volume limit</span><span id="volLabel" class="big-num">20%</span></div>
+  <input id="volume" type="range" min="5" max="100" value="40" aria-label="Volume limit">
+  <div id="volHint" class="dim"></div>
+</div>
+
+<div class="card">
+  <h2>Hear the difference</h2>
+  <button id="btnCompare">Compare: switch cancellation on / off every 5 s</button>
+  <div id="compareBox" class="dim">Off. Press the button while cancelling is running.</div>
+</div>
+
+<div class="card">
+  <h2>Tools</h2>
+  <button id="btnCheck">Speaker check (about 20 s, do this with the fans off or on)</button>
+  <div id="checkBox" class="dim"></div>
+  <button id="btnSave">Save results (download file)</button>
+  <button id="btnClear">Forget learned profile</button>
+</div>
+
+<script id="core-inline" type="text/plain">/*
+ * anc-core.js  --  environment-agnostic DSP for the "fan tone canceller".
+ *
+ * No DOM, no WebAudio.  The same file is loaded
+ *   - inside an AudioWorkletProcessor (index.html concatenates it with the processor class)
+ *   - in Node (sim/*.js tests) via require().
+ *
+ * Idea: fan noise = steady tones + random whoosh.  Latency does not matter for a steady tone,
+ * so we synthesise sinusoids at the tone frequencies and adapt their complex weight W_k so the
+ * mic residual at each tone frequency (measured by a lock-in / complex demodulator) goes to zero.
+ *
+ *   LISTEN  (silent)  averaged spectrum -> tonal peaks (50..4000 Hz)
+ *   LEARN             per tone, play two small probe sidebands (f-d, f+d) and lock-in the mic
+ *                     response -> S_k (speaker->mic path, complex) incl. a delay estimate
+ *   PLAY+TUNE         W_k <- W_k - mu * E_k / S_k  every ~20 ms; frequency tracking from the
+ *                     rotation of the disturbance phasor D_k = E_k - S_k * W_k
+ *   SAFETY            hard limiter / cap, soft start, per-tone divergence guard
+ *
+ * Public API:  const eng = new ANCCore.ANCEngine(sampleRate, opts);
+ *   eng.start(profileOrNull) / eng.stop() / eng.startSpeakerCheck()
+ *   eng.process(micBlock[, outBlock]) -> outBlock
+ *   eng.setCap(x) / eng.setCompare(bool) / eng.getStatus() / eng.exportData() / eng.getProfile()
+ */
+(function (root) {
+  'use strict';
+
+  const TWO_PI = 2 * Math.PI;
+  const WD = 32;   // ticks of history kept for the delayed-weight model
+  const dbA = (x) => 20 * Math.log10(Math.max(x, 1e-12));   // amplitude -> dB
+  const dbP = (x) => 10 * Math.log10(Math.max(x, 1e-24));   // power -> dB
+  const nextPow2 = (n) => { let p = 1; while (p < n) p <<= 1; return p; };
+
+  // linear A-weighting gain (IEC 61672), used only to rank tones by how audible they are
+  function aWeight(f) {
+    const f2 = f * f;
+    const ra = (12194 * 12194 * f2 * f2) /
+      ((f2 + 20.6 * 20.6) * Math.sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194 * 12194));
+    return ra * 1.2589;  // +2 dB normalisation -> 0 dB at 1 kHz
+  }
+
+  // ---------------------------------------------------------------- FFT (incremental)
+  // Radix-2 DIT.  step(budget) performs at most `budget` butterflies so a 65536-point
+  // transform can be spread over many 128-sample audio blocks without glitching.
+  class IncFFT {
+    constructor(n) {
+      this.n = n; this.bits = Math.round(Math.log2(n));
+      this.re = new Float64Array(n); this.im = new Float64Array(n);
+      this.rev = new Uint32Array(n);
+      for (let i = 0; i < n; i++) {
+        let r = 0, x = i;
+        for (let b = 0; b < this.bits; b++) { r = (r << 1) | (x & 1); x >>= 1; }
+        this.rev[i] = r;
+      }
+      this.cosT = new Float64Array(n / 2); this.sinT = new Float64Array(n / 2);
+      for (let k = 0; k < n / 2; k++) { this.cosT[k] = Math.cos(TWO_PI * k / n); this.sinT[k] = -Math.sin(TWO_PI * k / n); }
+      this.stage = 0; this.pos = 0; this.done = true;
+    }
+    loadWindowed(buf, win) {
+      const n = this.n, re = this.re, rev = this.rev;
+      for (let i = 0; i < n; i++) re[rev[i]] = buf[i] * win[i];
+      this.im.fill(0); this.stage = 0; this.pos = 0; this.done = false;
+    }
+    loadComplex(xr, xi, conj) {
+      const n = this.n, rev = this.rev;
+      this.re.fill(0); this.im.fill(0);
+      const m = Math.min(n, xr.length);
+      for (let i = 0; i < m; i++) { this.re[rev[i]] = xr[i]; this.im[rev[i]] = xi ? (conj ? -xi[i] : xi[i]) : 0; }
+      this.stage = 0; this.pos = 0; this.done = false;
+    }
+    step(budget) {
+      if (this.done) return true;
+      const n = this.n, half = n >> 1, re = this.re, im = this.im, cT = this.cosT, sT = this.sinT;
+      let b = budget;
+      while (b > 0 && this.stage < this.bits) {
+        const st = this.stage, h = 1 << st, len = h << 1, tstep = n / len;
+        const start = this.pos, end = Math.min(half, start + b);
+        for (let pos = start; pos < end; pos++) {
+          const j = pos & (h - 1), i0 = ((pos >> st) * len) + j, i1 = i0 + h;
+          const wr = cT[j * tstep], wi = sT[j * tstep];
+          const tr = re[i1] * wr - im[i1] * wi, ti = re[i1] * wi + im[i1] * wr;
+          re[i1] = re[i0] - tr; im[i1] = im[i0] - ti; re[i0] += tr; im[i0] += ti;
+        }
+        b -= (end - start); this.pos = end;
+        if (end >= half) { this.stage++; this.pos = 0; }
+      }
+      if (this.stage >= this.bits) this.done = true;
+      return this.done;
+    }
+    run() { return this.step(Infinity); }
+  }
+
+  // ---------------------------------------------------------------- Hann-windowed lock-in job
+  // Plays some oscillators (amp>0, out:true) and measures the mic phasor at each oscillator
+  // frequency over a Hann window.  Output phasor convention: out = Re(amp * e^{j phi}).
+  class LockJob {
+    constructor(sr, oscs, leadSec, winSec, tailSec) {
+      this.oscs = oscs.map((o) => ({
+        f: o.f, dphi: TWO_PI * o.f / sr, phi: 0, amp: o.amp || 0, out: !!o.out, tag: o.tag, ar: 0, ai: 0,
+      }));
+      this.lead = Math.round(leadSec * sr); this.Tn = Math.round(winSec * sr); this.tail = Math.round(tailSec * sr);
+      this.total = this.lead + this.Tn + this.tail;
+      this.j = 0; this.sumw = 0; this.done = false;
+    }
+    step(x) {
+      const j = this.j;
+      if (j >= this.total) { this.done = true; return 0; }
+      const lead = this.lead, Tn = this.Tn;
+      let g;
+      if (j < lead) g = j / lead; else if (j < lead + Tn) g = 1; else g = 1 - (j - lead - Tn) / this.tail;
+      const inWin = j >= lead && j < lead + Tn;
+      let w = 0;
+      if (inWin) { w = 0.5 * (1 - Math.cos(TWO_PI * (j - lead) / Tn)); this.sumw += w; }
+      let o = 0;
+      for (let k = 0; k < this.oscs.length; k++) {
+        const p = this.oscs[k], c = Math.cos(p.phi);
+        if (inWin) { p.ar += w * x * c; p.ai -= w * x * Math.sin(p.phi); }
+        if (p.out) o += g * p.amp * c;
+        p.phi += p.dphi; if (p.phi >= TWO_PI) p.phi -= TWO_PI;
+      }
+      this.j = j + 1;
+      if (this.j >= this.total) this.done = true;
+      return o;
+    }
+    result() { return this.oscs.map((p) => ({ re: 2 * p.ar / this.sumw, im: 2 * p.ai / this.sumw })); }
+  }
+
+  const cabs = (r, i) => Math.sqrt(r * r + i * i);
+  const wrapPi = (a) => { a = (a + Math.PI) % TWO_PI; if (a < 0) a += TWO_PI; return a - Math.PI; };
+
+  // ---------------------------------------------------------------- engine
+  class ANCEngine {
+    constructor(sr, opts) {
+      this.sr = sr;
+      this.opt = Object.assign({
+        listenSec: 8, quickListenSec: 3, maxTones: 8, peakDb: 8, minRelDb: 15, fmin: 50, fmax: 4000,
+        cap: 0.3,            // max |output| (hard limiter); the user's volume slider
+        mu: 0.15,            // max adaptation step (normalised); actual step is scaled down for long loop delays
+        muLoopGain: 0.9,     // target (loop gain x loop delay): 0.9 leaves ~40 degrees of phase margin
+        tau: 0.05,           // lock-in smoothing time constant per pole (2 poles)
+        updSec: 0.02,
+        probeAmp: 0.04, probeLeadSec: 0.15, probeTailSec: 0.1, minSnr: 3,
+        needMargin: 2.0,     // required output amplitude must be <= cap / needMargin
+        guardDb: 3, guardSec: 2, severeDb: 10, severeSec: 0.5, maxFails: 3,
+        rampSec: 2, convDb: 10, compareSec: 5, seriesSec: 1,
+        wMaxFactor: 2.5, freezeFactor: 1.5, freqKp: 0.08, freqKi: 0.06, freqMemSec: 0.25, freqLag: 10, freqMaxDev: 5, refineS: true, poorRefreshSec: 5, poorFailSec: 14, refineEverySec: 20, refineAmp: 0.012,
+      }, opts || {});
+      this.cap = this.opt.cap;
+      this.stage = 'idle';
+      this.n = 0;                       // total samples processed
+      this.updN = Math.max(1, Math.round(this.opt.updSec * sr));
+      this.dt = this.updN / sr;
+      this.aF = 1 - Math.exp(-1 / (this.opt.tau * sr));        // per-sample lock-in pole
+      this.aU = 1 - Math.exp(-this.dt / this.opt.tau);          // same pole at tick rate (for Wf)
+      this.aE = 1 - Math.exp(-this.dt / 0.5);                   // residual meter smoothing
+      this.fftN = nextPow2(Math.round(sr / 0.75));              // ~0.7 Hz resolution
+      this.fft = null; this.win = null;
+      this.tones = []; this.lockTones = [];
+      this.events = []; this.series = [];
+      this.checkResult = null;
+      this.cmpOn = false; this.cmp = 1; this.cmpTarget = 1;
+      this.ramp = 0; this.rampTarget = 0;
+      this.tickCnt = 0; this.limited = 0; this.panicked = false;
+      this.bbAcc = 0; this.bbCnt = 0; this.bbMs = 0; this.bbBaseMs = 0;
+      this.job = null; this.probeQ = []; this.profile = null;
+      this.mode = 'cold'; this.startN = 0; this.now = 0;
+      this.compareLog = []; this.cmpStats = null;
+      this.capDirty = false;
+    }
+
+    // ---------------------------------------------------------------- control
+    log(msg, extra) {
+      this.events.push(Object.assign({ t: +this.now.toFixed(2), msg }, extra || {}));
+      if (this.events.length > 600) this.events.shift();
+    }
+    setCap(v) { this.cap = Math.max(0.02, Math.min(1, v)); this.capDirty = true; }
+    setCompare(on) {
+      this.cmpOn = !!on; this.cmpT = 0; this.cmpState = 'on'; this.cmpTarget = 1;
+      this.cmpAcc = { tone: 0, bb: 0, n: 0 };
+    }
+    start(profile) {
+      if (!this.fft) {
+        this.fft = new IncFFT(this.fftN);
+        this.win = new Float64Array(this.fftN);
+        for (let i = 0; i < this.fftN; i++) this.win[i] = 0.5 * (1 - Math.cos(TWO_PI * i / this.fftN));
+      }
+      this.stage = 'listen'; this.panicked = false;
+      this.profile = profile && profile.tones && profile.tones.length ? profile : null;
+      this.mode = this.profile ? 'profile' : 'cold';
+      this.startN = this.n; this.now = 0;
+      this.tones = []; this.lockTones = []; this.probeQ = []; this.job = null;
+      this.events = []; this.series = []; this.seriesT = 0; this.nextId = 1;
+      this.ramp = 0; this.rampTarget = 0; this.cmp = 1; this.cmpTarget = 1;
+      this.compareLog = []; this.limited = 0;
+      this.lbuf = new Float32Array(this.fftN); this.lcount = 0; this.lN = 0; this.lsumsq = 0;
+      this.lP = new Float64Array(this.fftN / 2 + 1); this.lastP = null; this.lframes = 0; this.lpending = false;
+      this.listenSamples = Math.round((this.profile ? this.opt.quickListenSec : this.opt.listenSec) * this.sr);
+      this.bbBaseMs = 0; this.bbMs = 0; this.noTones = false; this.tPlayStage = null;
+      this.cmpT = 0; this.cmpState = 'on';
+      this.cmpAcc = { tone: 0, bb: 0, n: 0 };
+      this.log('start', { mode: this.mode });
+    }
+    stop() {
+      if (this.stage === 'idle') return;
+      if (this.stage === 'listen' || this.stage === 'check') { this._toIdle(); return; }
+      this.stage = 'stopping'; this.rampTarget = 0; this.job = null;
+      this.log('stop requested');
+    }
+    _toIdle() {
+      this.stage = 'idle'; this.job = null; this.ramp = 0; this.rampTarget = 0;
+      this.lockTones = []; this.chk = null;
+    }
+    _panic(why) {
+      this.panicked = true; this.log('PANIC ' + why); this._toIdle();
+    }
+
+    // ---------------------------------------------------------------- main entry
+    process(mic, out) {
+      const n = mic.length;
+      if (!out) out = new Float32Array(n);
+      switch (this.stage) {
+        case 'listen': this._listen(mic, out); break;
+        case 'learn': case 'play': case 'stopping': this._audio(mic, out); break;
+        case 'check': this._check(mic, out); break;
+        default:
+          out.fill(0);
+          for (let i = 0; i < n; i++) { this.bbAcc += mic[i] * mic[i]; this.bbCnt++; }
+          this._bbRoll();
+          this.n += n;
+      }
+      return out;
+    }
+
+    _bbRoll() {
+      if (this.bbCnt >= this.sr * 0.25) {
+        const ms = this.bbAcc / this.bbCnt;
+        this.bbMs = this.bbMs === 0 ? ms : 0.7 * this.bbMs + 0.3 * ms;
+        this.bbAcc = 0; this.bbCnt = 0;
+      }
+    }
+
+    // ---------------------------------------------------------------- LISTEN
+    _listen(mic, out) {
+      const n = mic.length, N = this.fftN;
+      out.fill(0);
+      for (let i = 0; i < n; i++) {
+        const x = mic[i];
+        this.lbuf[this.lcount++] = x; this.lsumsq += x * x; this.lN++;
+        this.bbAcc += x * x; this.bbCnt++;
+        if (this.lcount === N) {
+          if (this.fft.done) { this.fft.loadWindowed(this.lbuf, this.win); this.lpending = true; }
+          this.lbuf.copyWithin(0, N / 2); this.lcount = N / 2;
+        }
+      }
+      this._bbRoll();
+      this.n += n; this.now = (this.n - this.startN) / this.sr;
+      if (this.lpending && this.fft.step(30 * n)) {
+        const re = this.fft.re, im = this.fft.im, P = this.lP;
+        if (!this.lastP) this.lastP = new Float64Array(N / 2 + 1);
+        for (let b = 0; b <= N / 2; b++) { const p2 = re[b] * re[b] + im[b] * im[b]; P[b] += p2; this.lastP[b] = p2; }
+        this.lframes++; this.lpending = false;
+      }
+      if (this.lN >= this.listenSamples && !this.lpending && this.lframes >= 2) this._finishListen();
+    }
+
+    _detectPeaks() {
+      const N = this.fftN, df = this.sr / N, half = N / 2, o = this.opt;
+      const P = this.lP, fr = this.lframes;
+      const db = new Float64Array(half + 1);
+      for (let b = 0; b <= half; b++) db[b] = dbP(P[b] / fr);
+      const bmin = Math.max(5, Math.ceil(o.fmin / df)), bmax = Math.min(half - 5, Math.floor(o.fmax / df));
+      const W = Math.round(50 / df);
+      const floor = new Float64Array(half + 1);
+      // Floor = low-percentile of a +-50 Hz window (+0.8 dB to equal the median of pure noise).
+      // A plain median is biased upward when many tones crowd the window (100-150 Hz cluster).
+      const tmp = new Float64Array(2 * W + 1);
+      for (let b = bmin; b <= bmax; b += 1) {
+        const lo = Math.max(1, b - W), hi = Math.min(half - 1, b + W), m = hi - lo + 1;
+        const s = tmp.subarray(0, m);
+        for (let k = 0; k < m; k++) s[k] = db[lo + k];
+        s.sort();
+        floor[b] = s[Math.floor(m * 0.35)] + 0.8;
+      }
+      const cand = [];
+      for (let b = bmin; b <= bmax; b++) {
+        if (db[b] < floor[b] + o.peakDb) continue;
+        let isMax = true;
+        for (let k = 1; k <= 3; k++) if (db[b] < db[b - k] || db[b] <= db[b + k]) { isMax = false; break; }
+        if (!isMax) continue;
+        const a = db[b - 1], bb = db[b], c = db[b + 1];
+        const den = a - 2 * bb + c;
+        const delta = den < 0 ? Math.max(-0.5, Math.min(0.5, 0.5 * (a - c) / den)) : 0;
+        const peakDb = bb - 0.25 * (a - c) * delta;
+        const f = (b + delta) * df;
+        const pk = Math.pow(10, peakDb / 10), fl = Math.pow(10, floor[b] / 10);
+        const A = 4 * Math.sqrt(Math.max(pk - fl, pk * 0.1)) / N;
+        cand.push({ b, f, A, aw: A * aWeight(f), aboveDb: peakDb - floor[b], floorDb: floor[b] });
+      }
+      cand.sort((x, y) => y.aw - x.aw);                 // ear-weighted priority
+      const sel = [], dropped = [];
+      const awMin = cand.length ? cand[0].aw * Math.pow(10, -o.minRelDb / 20) : 0;   // not worth cancelling if >minRelDb below the loudest (ear-weighted)
+      for (const c of cand) {
+        if (sel.length >= o.maxTones) break;
+        if (c.aw < awMin) { dropped.push(+c.f.toFixed(1)); continue; }
+        if (sel.every((s) => Math.abs(s.b - c.b) >= 4)) sel.push(c);
+      }
+      if (dropped.length) this.log('weak tones ignored (>' + o.minRelDb + ' dB below the loudest, ear-weighted)', { freqs: dropped });
+      return sel;
+    }
+
+    _makeTone(f, A, aboveDb) {
+      const sr = this.sr;
+      return {
+        id: this.nextId++, f, f0: f, A0: A, baseDb: dbA(A), aboveDb, aw: A * aWeight(f),
+        phi: 0, dphi: TWO_PI * f / sr, Wr: 0, Wi: 0, Sr: 0, Si: 0, iSr: 0, iSi: 0, hasS: false,
+        S0r: 0, S0i: 0, snr: null, delayMs: null, needAmp: null,
+        state: 'queued', reason: '', lock: true, gain: 0, gTarget: 0,
+        a1r: 0, a1i: 0, a2r: 0, a2i: 0, f1r: 0, f1i: 0, f2r: 0, f2i: 0,
+        Er: 0, Ei: 0, e2s: A * A, ring: new Float64Array(6 * (this.opt.freqLag + 1)), wp: 0, hist: 0,
+        Cr: 0, Ci: 0, fr: 0, lostT: 0, poorT: 0, wantRefine: false, fGood: f, frGood: 0, tGood: 0, wd: new Float64Array(2 * WD), wdp: 0, settleT: 0, stableT: 0, guardT: 0, severeT: 0, goodT: 0, fails: 0,
+        tConv: null, tConvPlay: null, tPlay: null, fromProfile: false, relearns: 0,
+      };
+    }
+
+    // S is stored as a reference value measured at frequency fS; the effective S at the tone's CURRENT
+    // (tracked) frequency is rotated by the measured path delay:  S(f) = S_ref * exp(-j 2 pi (f - fS) tau)
+    _setS(t, re, im, atF) {
+      t.S0r = re; t.S0i = im; t.fS = atF; t.hasS = true; this._rotS(t);
+    }
+    _rotS(t) {
+      const ph = this.opt.rotS === false ? 0 : -TWO_PI * (t.f - t.fS) * (t.delayMs || 0) / 1000, c = Math.cos(ph), s = Math.sin(ph);
+      t.Sr = t.S0r * c - t.S0i * s; t.Si = t.S0r * s + t.S0i * c;
+      const m2 = t.Sr * t.Sr + t.Si * t.Si;
+      t.iSr = t.Sr / m2; t.iSi = -t.Si / m2;
+    }
+
+    _finishListen() {
+      const sel = this._detectPeaks();
+      this.bbBaseMs = this.lsumsq / Math.max(1, this.lN);
+      this.bbMs = this.bbBaseMs;
+      // start each oscillator at the frequency seen in the MOST RECENT frame (tones drift during the listen)
+      const df = this.sr / this.fftN;
+      for (const p of sel) {
+        const lo = Math.max(2, Math.round((p.f - 2.5) / df)), hi = Math.round((p.f + 2.5) / df);
+        let bb = lo; for (let b = lo; b <= hi; b++) if (this.lastP[b] > this.lastP[bb]) bb = b;
+        const a = dbP(this.lastP[bb - 1]), c0 = dbP(this.lastP[bb]), c = dbP(this.lastP[bb + 1]), den = a - 2 * c0 + c;
+        if (bb > lo && bb < hi && den < 0) p.f = (bb + Math.max(-0.5, Math.min(0.5, 0.5 * (a - c) / den))) * df;
+      }
+      this.tones = sel.map((p) => this._makeTone(p.f, p.A, p.aboveDb));
+      this.log('listen done', { tones: this.tones.map((t) => +t.f.toFixed(2)), frames: this.lframes });
+      // profile matching (quick start): reuse S from a learned profile when the tone is still there
+      if (this.profile) {
+        const used = new Set();
+        for (const t of this.tones) {
+          let best = null, bd = 4.0;
+          this.profile.tones.forEach((pt, idx) => {
+            if (used.has(idx)) return;
+            const d = Math.abs(pt.f - t.f);
+            if (d < bd) { bd = d; best = idx; }
+          });
+          if (best !== null) {
+            used.add(best); const pt = this.profile.tones[best];
+            t.fromProfile = true;
+            if (pt.playable && pt.S) { t.delayMs = pt.delayMs || 0; t.snr = pt.snr || null; this._setS(t, pt.S[0], pt.S[1], pt.fS || pt.f); }
+            else { t.state = 'unplayable'; t.reason = pt.reason || 'profile says this phone cannot cancel it'; t.lock = false; }
+          }
+        }
+        this.log('profile matched', { matched: this.tones.filter((t) => t.fromProfile).length, of: this.profile.tones.length });
+      }
+      for (const t of this.tones) {
+        if (t.state === 'unplayable') continue;
+        if (t.hasS) { t.state = 'settling'; this._applyPlayable(t); } else this.probeQ.push(t.id);
+      }
+      this.stage = 'learn'; this.rampTarget = 1; this.tickCnt = 0;
+      this.lockTones = this.tones.filter((t) => t.lock);
+      this.lbuf = null;
+      if (!this.tones.length) { this.noTones = true; this.log('no steady tones found'); }
+    }
+
+    // ---------------------------------------------------------------- playable decision
+    // Playable = S measured with enough SNR AND the amplitude needed (A0/|S|) fits under the cap
+    // with margin (no absolute |S| threshold -- a quiet room with the phone by the ear may need little).
+    _applyPlayable(t) {
+      const Sm = cabs(t.Sr, t.Si);
+      t.needAmp = t.A0 / Sm;
+      if (t.snr !== null && t.snr < this.opt.minSnr) {
+        t.state = 'unplayable'; t.reason = 'speaker cannot make this pitch loud enough to hear at the mic'; t.lock = false; return false;
+      }
+      if (t.needAmp * this.opt.needMargin > 0.95) {
+        t.state = 'unplayable'; t.reason = 'speaker too weak at this pitch (it would need more than full output)'; t.lock = false; return false;
+      }
+      if (t.needAmp * this.opt.needMargin > this.cap) {
+        t.state = 'unplayable'; t.reason = 'volume'; t.lock = true;       // may be promoted when volume rises
+        t.reasonText = 'needs more volume (about ' + Math.ceil(t.needAmp * this.opt.needMargin * 100) + '%)';
+        return false;
+      }
+      t.reasonText = ''; t.reason = '';
+      if (t.state !== 'playing') { t.state = 'settling'; t.settleT = 0; }
+      return true;
+    }
+    _repromote() {
+      // volume went up: tones previously blocked only by volume may now be playable (priority order)
+      let sumNeed = 0;
+      for (const t of this.tones) if (t.state === 'playing' || t.state === 'settling') sumNeed += t.needAmp || 0;
+      const cands = this.tones.filter((t) => t.state === 'unplayable' && t.reason === 'volume').sort((a, b) => b.aw - a.aw);
+      for (const t of cands) {
+        if ((sumNeed + t.needAmp) * this.opt.needMargin <= this.cap * 0.9) {
+          t.reason = ''; t.reasonText = ''; t.state = 'settling'; t.settleT = 0; t.gain = 0; t.gTarget = 0;
+          sumNeed += t.needAmp; this.log('tone enabled by volume', { id: t.id });
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------- probes (LEARN)
+    _bestOffsets(others, cands) {
+      // pick the candidate whose frequencies stay farthest from every frequency in `others`
+      let best = null, bs = -1;
+      for (const c of cands) {
+        if (c.fs.some((x) => x < 20 || x > this.sr * 0.45)) continue;
+        let s = 1e9;
+        for (const x of c.fs) for (const o of others) s = Math.min(s, Math.abs(x - o));
+        if (s > bs) { bs = s; best = c; }
+      }
+      return { best, score: bs };
+    }
+
+    _startProbeBatch() {
+      const allF = this.tones.filter((t) => t.state !== 'unplayable' || t.reason === 'volume').map((t) => t.f);
+      const batch = [], probeFs = [];
+      const sidebandCands = [2, 2.5, 3, 3.5, 4, 5, 6, 7].map((d) => ({ d, fs: null }));
+      for (let qi = 0; qi < this.probeQ.length && batch.length < 4; qi++) {
+        const t = this.tones.find((x) => x.id === this.probeQ[qi]);
+        if (!t) continue;
+        const others = allF.filter((x) => x !== t.f).concat(probeFs).concat([t.f]);
+        // own tone must also keep its distance: it is in `others`
+        const cands = sidebandCands.map((c) => ({ d: c.d, fs: [t.f - c.d, t.f + c.d] }));
+        const sb = this._bestOffsets(others, cands);
+        if (!sb.best) continue;
+        if (batch.length > 0 && sb.score < 2.2) continue;
+        const refC = [-11, 11, -9, 9, -14, 14, -7, 7].map((d) => ({ d, fs: [t.f + d] }));
+        const rf = this._bestOffsets(others.concat(sb.best.fs), refC);
+        if (!rf.best) continue;
+        batch.push({ tone: t, fAt: t.f, d: sb.best.d, fm: sb.best.fs[0], fp: sb.best.fs[1], fr: rf.best.fs[0], score: sb.score });
+        probeFs.push(sb.best.fs[0], sb.best.fs[1], rf.best.fs[0]);
+      }
+      if (!batch.length) { this.probeQ.shift(); return; }
+      for (const it of batch) {
+        this.probeQ.splice(this.probeQ.indexOf(it.tone.id), 1);
+        it.tone.state = 'probing'; it.tone.gTarget = 0;
+      }
+      const minScore = Math.min(...batch.map((b) => b.score));
+      const winSec = Math.max(1.2, Math.min(2.4, 4 / Math.max(0.5, minScore)));
+      const pa = Math.min(this.opt.probeAmp, 0.8 * this.cap / (2 * batch.length));
+      const oscs = [];
+      batch.forEach((it, k) => {
+        oscs.push({ f: it.fm, amp: pa, out: true, tag: 'm' + k });
+        oscs.push({ f: it.fp, amp: pa, out: true, tag: 'p' + k });
+        oscs.push({ f: it.fr, amp: 0, out: false, tag: 'r' + k });
+      });
+      this.job = new LockJob(this.sr, oscs, this.opt.probeLeadSec, winSec, this.opt.probeTailSec);
+      this.job.kind = 'probe'; this.job.batch = batch; this.job.pa = pa;
+      this.log('probe start', { tones: batch.map((b) => +b.tone.f.toFixed(1)), winSec: +winSec.toFixed(2), pa });
+    }
+
+    _startRefine() {
+      let ok = this.tones.filter((t) => t.state === 'playing' && t.wantRefine && t.delayMs !== null);
+      if (!ok.length) ok = this.tones.filter((t) => t.state === 'playing' && t.stableT > 3 && t.e2s < t.A0 * t.A0 && t.delayMs !== null);
+      if (!ok.length) return;
+      this.refineIdx = ((this.refineIdx || 0) + 1);
+      const t = ok[this.refineIdx % ok.length];
+      t.wantRefine = false;
+      const others = this.tones.filter((x) => x !== t && x.lock).map((x) => x.f).concat([t.f]);
+      const cands = [10, 12, 14, 16, 18, 20, 24].map((d) => ({ d, fs: [t.f - d, t.f + d] }));
+      const sb = this._bestOffsets(others, cands);
+      if (!sb.best || sb.score < 3.5) return;
+      const rf = this._bestOffsets(others.concat(sb.best.fs), [-31, 31, -27, 27, -37, 37].map((d) => ({ d, fs: [t.f + d] })));
+      if (!rf.best) return;
+      const pa = Math.min(this.opt.refineAmp, 0.1 * this.cap);
+      const job = new LockJob(this.sr, [
+        { f: sb.best.fs[0], amp: pa, out: true }, { f: sb.best.fs[1], amp: pa, out: true }, { f: rf.best.fs[0], amp: 0, out: false },
+      ], 0.2, 1.5, 0.1);
+      job.kind = 'refine'; job.tone = t; job.d = sb.best.d; job.pa = pa; job.fAt = t.f;
+      this.job = job;
+    }
+
+    _finishRefine() {
+      const job = this.job; this.job = null;
+      const t = job.tone;
+      if (t.state !== 'playing') return;
+      const r = job.result(), pa = job.pa;
+      const Sm = { re: r[0].re / pa, im: r[0].im / pa }, Sp = { re: r[1].re / pa, im: r[1].im / pa };
+      const snr = Math.min(cabs(r[0].re, r[0].im), cabs(r[1].re, r[1].im)) / Math.max(1e-12, cabs(r[2].re, r[2].im));
+      const thm = Math.atan2(Sm.im, Sm.re), thp = Math.atan2(Sp.im, Sp.re);
+      const exp = -TWO_PI * 2 * job.d * (t.delayMs / 1000);               // expected phase step from the known delay -> resolves 2*pi ambiguity
+      let D = thp - thm; D += TWO_PI * Math.round((exp - D) / TWO_PI);
+      const th = thm + D / 2, mag = Math.sqrt(cabs(Sm.re, Sm.im) * cabs(Sp.re, Sp.im));
+      const delay = -D / (TWO_PI * 2 * job.d) * 1000;
+      this._rotS(t);
+      // compare against the effective S at the frequency the probe was centred on
+      const ph0 = -TWO_PI * (job.fAt - t.fS) * (t.delayMs || 0) / 1000;
+      const sr0 = t.S0r * Math.cos(ph0) - t.S0i * Math.sin(ph0), si0 = t.S0r * Math.sin(ph0) + t.S0i * Math.cos(ph0);
+      const m0 = cabs(sr0, si0), dph = Math.abs(wrapPi(th - Math.atan2(si0, sr0)));
+      let applied = false;
+      if (snr > 8 && mag > 0.4 * m0 && mag < 2.5 * m0 && dph < 2.2 && Math.abs(delay - t.delayMs) < 10) {
+        const a = t.e2s > 0.5 * t.A0 * t.A0 ? 1.0 : 0.5;     // blend: probe noise must not jitter the loop (take it fully when the loop is visibly failing)
+        const nr = (1 - a) * sr0 + a * mag * Math.cos(th), ni = (1 - a) * si0 + a * mag * Math.sin(th);
+        t.delayMs += a * (delay - t.delayMs); this._setS(t, nr, ni, job.fAt); t.refined = (t.refined || 0) + 1; applied = true;
+      }
+      this.log('S refresh', { id: t.id, f: +t.f.toFixed(1), snr: +snr.toFixed(1), dMag: +(dbA(mag / m0)).toFixed(2), dPhase: +dph.toFixed(2), delayMs: +delay.toFixed(1), applied });
+    }
+
+    _finishProbe() {
+      const job = this.job; this.job = null;
+      const res = job.result(), pa = job.pa;
+      job.batch.forEach((it, k) => {
+        const t = it.tone;
+        const m = res[3 * k], p = res[3 * k + 1], r = res[3 * k + 2];
+        const Sm = { re: m.re / pa, im: m.im / pa }, Sp = { re: p.re / pa, im: p.im / pa };
+        const mm = cabs(Sm.re, Sm.im), mp = cabs(Sp.re, Sp.im);
+        const th_m = Math.atan2(Sm.im, Sm.re), th_p = Math.atan2(Sp.im, Sp.re);
+        let D = th_p - th_m;                       // expect negative (delay): unwrap into [-1.5pi, 0.5pi)
+        let x = (D + 1.5 * Math.PI) % TWO_PI; if (x < 0) x += TWO_PI; D = x - 1.5 * Math.PI;
+        const th = th_m + D / 2;
+        const mag = Math.sqrt(mm * mp);
+        const snr = Math.min(cabs(m.re, m.im), cabs(p.re, p.im)) / Math.max(1e-12, cabs(r.re, r.im));
+        const delay = -D / (TWO_PI * 2 * it.d) * 1000;
+        t.snr = snr; t.delayMs = delay;
+        this._setS(t, mag * Math.cos(th), mag * Math.sin(th), it.fAt);
+        t.Wr = 0; t.Wi = 0; t.gain = 0; t.gTarget = 0;
+        t.hist = 0; t.Cr = 0; t.Ci = 0; t.ring.fill(0); t.wd.fill(0); t.f1r = t.f1i = t.f2r = t.f2i = 0;
+        const ok = this._applyPlayable(t);
+        this.log('probe result', { id: t.id, f: +t.f.toFixed(2), Sph: +th.toFixed(2), S: +mag.toFixed(4), Sdb: +dbA(mag).toFixed(1), snr: +snr.toFixed(1), delayMs: +delay.toFixed(1), ok, why: t.reason });
+      });
+      this.lockTones = this.tones.filter((t) => t.lock);
+    }
+
+    // ---------------------------------------------------------------- audio loop for learn/play
+    _audio(mic, out) {
+      const n = mic.length, aF = this.aF, sr = this.sr;
+      const lt = this.lockTones;
+      const rampUp = 1 / (this.opt.rampSec * sr), rampDn = 1 / (0.3 * sr), cmpStep = 1 / (0.3 * sr), gStep = 1 / (0.1 * sr);
+      for (let i = 0; i < n; i++) {
+        const x = mic[i];
+        this.bbAcc += x * x; this.bbCnt++;
+        if (this.ramp !== this.rampTarget) {
+          if (this.ramp < this.rampTarget) this.ramp = Math.min(this.rampTarget, this.ramp + rampUp);
+          else this.ramp = Math.max(this.rampTarget, this.ramp - rampDn);
+        }
+        if (this.cmp !== this.cmpTarget) {
+          if (this.cmp < this.cmpTarget) this.cmp = Math.min(this.cmpTarget, this.cmp + cmpStep);
+          else this.cmp = Math.max(this.cmpTarget, this.cmp - cmpStep);
+        }
+        let o = 0;
+        for (let k = 0; k < lt.length; k++) {
+          const t = lt[k];
+          const c = Math.cos(t.phi), s = Math.sin(t.phi);
+          t.a1r += aF * (x * c - t.a1r); t.a1i += aF * (-x * s - t.a1i);
+          t.a2r += aF * (t.a1r - t.a2r); t.a2i += aF * (t.a1i - t.a2i);
+          if (t.gain !== t.gTarget) {
+            if (t.gain < t.gTarget) t.gain = Math.min(t.gTarget, t.gain + gStep);
+            else t.gain = Math.max(t.gTarget, t.gain - gStep);
+          }
+          if (t.gain !== 0) o += t.gain * (t.Wr * c - t.Wi * s);
+          t.phi += t.dphi; if (t.phi >= TWO_PI) t.phi -= TWO_PI;
+        }
+        o *= this.ramp * this.cmp;
+        if (this.job) o += this.job.step(x);
+        const cap = this.cap;
+        if (o > cap) { o = cap; this.limited++; } else if (o < -cap) { o = -cap; this.limited++; }
+        if (o !== o) { o = 0; this._panic('NaN in output'); out.fill(0); return; }
+        out[i] = o;
+        this.n++;
+        if (++this.tickCnt >= this.updN) {
+          this.tickCnt = 0;
+          this._tick();
+          if (this.stage === 'idle') { for (let q = i + 1; q < n; q++) out[q] = 0; return; }
+        }
+      }
+      this.now = (this.n - this.startN) / sr;
+    }
+
+    // ---------------------------------------------------------------- 20 ms control tick
+    _tick() {
+      const o = this.opt, dt = this.dt, L = o.freqLag;
+      this.now = (this.n - this.startN) / this.sr;
+      const now = this.now;
+      this._bbRoll();
+      if (this.stage === 'stopping') { if (this.ramp <= 0) this._toIdle(); return; }
+      if (this.job && this.job.done) { if (this.job.kind === 'probe') this._finishProbe(); else if (this.job.kind === 'refine') this._finishRefine(); }
+      if (!this.job && this.probeQ.length) this._startProbeBatch();
+      if (this.capDirty) { this.capDirty = false; this._repromote(); this.lockTones = this.tones.filter((t) => t.lock); }
+
+      const geBase = this.ramp * this.cmp;
+      const gc = o.guardDb, guardP = Math.pow(10, gc / 10), severeP = Math.pow(10, o.severeDb / 10);
+      let toneP = 0;
+      for (const t of this.tones) {
+        if (!t.lock) continue;
+        const Er = 2 * t.a2r, Ei = 2 * t.a2i;
+        t.Er = Er; t.Ei = Ei;
+        const e2 = Er * Er + Ei * Ei;
+        t.e2s += this.aE * (e2 - t.e2s);
+        const ge = geBase * t.gain;
+        // effective output weight as it ARRIVES at the mic: delayed by the measured path delay
+        t.wd[t.wdp * 2] = ge * t.Wr; t.wd[t.wdp * 2 + 1] = ge * t.Wi;
+        const dTicks = Math.min(WD - 1, Math.max(0, Math.round((t.delayMs || 0) / 1000 / dt)));
+        const rdp = (t.wdp - dTicks + WD) % WD;
+        t.wdp = (t.wdp + 1) % WD;
+        const wr = t.wd[rdp * 2], wi = t.wd[rdp * 2 + 1];
+        t.f1r += this.aU * (wr - t.f1r); t.f1i += this.aU * (wi - t.f1i);
+        t.f2r += this.aU * (t.f1r - t.f2r); t.f2i += this.aU * (t.f1i - t.f2i);
+
+        if (t.hasS) this._rotS(t);
+        if (t.state === 'settling') t.settleT += dt;
+        const isPlay = t.state === 'playing' && t.hasS, isSettle = t.state === 'settling' && t.settleT >= 0.3;
+        if (!isPlay && !isSettle && t.fr !== 0) {          // not tracking right now: coast on the (decaying) last drift-rate estimate
+          t.fr *= Math.exp(-dt / 2);
+          t.f = Math.max(t.f0 - o.freqMaxDev, Math.min(t.f0 + o.freqMaxDev, t.f + t.fr * dt)); t.dphi = TWO_PI * t.f / this.sr;
+        }
+        if (!isPlay && !isSettle) continue;
+
+        // disturbance phasor estimate (while settling the speaker is silent, so D = E)
+        const Dr = isPlay ? Er - (t.Sr * t.f2r - t.Si * t.f2i) : Er, Di = isPlay ? Ei - (t.Sr * t.f2i + t.Si * t.f2r) : Ei;
+        const sz = L + 1, base = ((t.wp + 1) % sz) * 6, cur = t.wp * 6;
+        const Lr = t.ring[base], Li = t.ring[base + 1];
+        t.ring[cur] = Dr; t.ring[cur + 1] = Di; t.ring[cur + 2] = Er; t.ring[cur + 3] = Ei; t.ring[cur + 4] = t.f2r; t.ring[cur + 5] = t.f2i;
+        const Elr = t.ring[base + 2], Eli = t.ring[base + 3], Wlr = t.ring[base + 4], Wli = t.ring[base + 5];
+        t.wp = (t.wp + 1) % sz; t.hist++;
+        // frequency tracking: rotation of D over L ticks -> PI loop (frequency + drift rate)
+        const diverging = isPlay && t.e2s > o.freezeFactor * t.A0 * t.A0;   // loop not working: D estimate untrustworthy, freeze tracker
+        if (t.hist > L && !diverging) {
+          const lam = Math.exp(-dt / o.freqMemSec);
+          t.Cr = lam * t.Cr + (Dr * Lr + Di * Li); t.Ci = lam * t.Ci + (Di * Lr - Dr * Li);
+          if (t.Cr * t.Cr + t.Ci * t.Ci > 1e-24) {
+            const e = Math.atan2(t.Ci, t.Cr) / (TWO_PI * L * dt);       // Hz the oscillator is below the tone
+            t.fr = Math.max(-3, Math.min(3, t.fr + o.freqKi * e));        // drift rate, Hz/s
+            let step = dt * t.fr + o.freqKp * e;
+            if (Math.abs(t.f + step - t.f0) > o.freqMaxDev) {
+              step = 0; t.fr = 0; t.lostT += dt;
+              if (t.lostT > 1) this._loseTone(t);
+            } else t.lostT = 0;
+            if (step !== 0) {
+              t.f += step; t.dphi = TWO_PI * t.f / this.sr;
+              const rot = -TWO_PI * step * L * dt, cr = Math.cos(rot), ci = Math.sin(rot);
+              const ncr = t.Cr * cr - t.Ci * ci; t.Ci = t.Cr * ci + t.Ci * cr; t.Cr = ncr;
+            }
+          }
+        }
+        if (isSettle) {
+          if (t.settleT >= 0.9) {
+            // one-shot Newton step from the measured residual (the speaker has been silent for this tone, so W starts at 0)
+            t.Wr = -0.8 * (Er * t.iSr - Ei * t.iSi); t.Wi = -0.8 * (Er * t.iSi + Ei * t.iSr);
+            t.state = 'playing'; t.gTarget = 1; t.tPlay = now; t.stableT = 0; t.guardT = 0; t.severeT = 0;
+            t.e2s = Math.max(t.e2s, 0) ; t.wd.fill(0); t.f1r = t.f1i = t.f2r = t.f2i = 0;
+            this.log('tone playing', { id: t.id, f: +t.f.toFixed(2) });
+          }
+          continue;
+        }
+        // stability / hold-off: adapt only when ramps & gains have been steady for a while
+        if (geBase * t.gain > 0.999) t.stableT += dt; else t.stableT = 0;
+        const stable = t.stableT >= 0.45;
+        if (stable) {
+          // normalised complex LMS / Newton step
+          const mu = Math.min(o.mu, o.muLoopGain * dt / (2 * o.tau + (t.delayMs || 35) / 1000 + dt));
+          t.Wr -= mu * (Er * t.iSr - Ei * t.iSi);
+          t.Wi -= mu * (Er * t.iSi + Ei * t.iSr);
+          // physical bound: full cancellation needs |W| = A0/|S|.  Anything far above that means something is wrong,
+          // and a runaway tone must not eat the shared output budget of healthy tones.
+          const wm = cabs(t.Wr, t.Wi), wmax = o.wMaxFactor * t.A0 / cabs(t.Sr, t.Si);
+          if (wm > wmax) { t.Wr *= wmax / wm; t.Wi *= wmax / wm; }
+          if (t.e2s < 0.25 * t.A0 * t.A0) { t.fGood = t.f; t.frGood = t.fr; t.tGood = now; }     // remember the last frequency that was cancelling well (-6 dB)
+          // convergence timer
+          if (t.tConv === null && t.e2s < t.A0 * t.A0 * Math.pow(10, -o.convDb / 10)) {
+            t.tConv = now; t.tConvPlay = now - t.tPlay;
+            this.log('tone converged', { id: t.id, f: +t.f.toFixed(2), tConv: +now.toFixed(2), tConvPlay: +t.tConvPlay.toFixed(2) });
+          }
+          // divergence guard
+          const r = t.e2s / (t.A0 * t.A0);
+          t.guardT = r > guardP ? t.guardT + dt : 0;
+          t.severeT = r > severeP ? t.severeT + dt : 0;
+          t.goodT = r < 1 ? t.goodT + dt : 0;
+          // silent failure: the loop is "stable" but not cancelling (e.g. the speaker path changed). Refresh S first, then re-learn.
+          t.poorT = r > 0.5 ? t.poorT + dt : 0;
+          if (t.poorT > o.poorRefreshSec) t.wantRefine = true;
+          if (t.poorT > o.poorFailSec) { t.poorT = 0; this.log('tone not cancelling: re-learning', { id: t.id, f: +t.f.toFixed(2) }); this._failTone(t); }
+          if (t.goodT > 30 && t.fails) t.fails = 0;
+          if (t.guardT > o.guardSec || t.severeT > o.severeSec) this._failTone(t);
+        }
+      }
+      // output amplitude limiting (sum of tone magnitudes must fit under the cap)
+      let sum = 0;
+      for (const t of this.tones) if (t.state === 'playing') sum += t.gain * cabs(t.Wr, t.Wi);
+      const lim = 0.9 * this.cap;
+      if (sum > lim) { const k = lim / sum; for (const t of this.tones) if (t.state === 'playing') { t.Wr *= k; t.Wi *= k; } this.limited++; }
+
+      // slow online refinement of S: a tiny probe pair, far (>=10 Hz) from the tone, played WHILE it keeps cancelling
+      if (o.refineS && this.stage === 'play' && !this.job && !this.probeQ.length && geBase > 0.999) {
+        this.refineT = (this.refineT || 0) + dt;
+        if (this.refineT >= o.refineEverySec || this.tones.some((t) => t.wantRefine && t.state === 'playing')) { this.refineT = 0; this._startRefine(); }
+      }
+      // stage transition
+      if (this.stage === 'learn' && !this.job && !this.probeQ.length &&
+          !this.tones.some((t) => t.state === 'queued' || t.state === 'probing')) {
+        this.stage = 'play'; this.tPlayStage = now; this.log('play stage');
+      }
+      // metering / compare / series
+      for (const t of this.tones) if (t.state === 'playing') toneP += t.Er * t.Er + t.Ei * t.Ei;
+      if (this.stage === 'play') this._compareTick(toneP);
+      this.seriesT += dt;
+      if (this.seriesT >= o.seriesSec && this.stage === 'play') {
+        this.seriesT = 0;
+        if (this.series.length < 7200) this.series.push({
+          t: +now.toFixed(1), bbDb: +(dbP(this.bbMs) ).toFixed(2), cmp: this.cmpState,
+          tones: this.tones.map((t) => (t.state === 'playing' ? +dbP(t.e2s).toFixed(1) : null)),
+          red: this.tones.map((t) => (t.state === 'playing' ? +(t.baseDb - dbP(t.e2s)).toFixed(1) : null)),
+        });
+      }
+    }
+
+    _loseTone(t) {
+      t.state = 'disabled'; t.gTarget = 0; t.reason = 'the fan pitch moved too far - press Stop, then Start to listen again';
+      t.reasonText = t.reason; this.log('tone lost (frequency left the tracking range)', { id: t.id, f: +t.f.toFixed(2) });
+    }
+
+    _failTone(t) {
+      // the tracker was corrupted while the loop was diverging: restart from the last good frequency, extrapolated by its drift rate
+      t.f = Math.max(t.f0 - this.opt.freqMaxDev, Math.min(t.f0 + this.opt.freqMaxDev, t.fGood + t.frGood * 2 * (1 - Math.exp(-(this.now - t.tGood) / 2))));
+      t.fr = t.frGood * Math.exp(-(this.now - t.tGood) / 2); t.dphi = TWO_PI * t.f / this.sr;
+      t.fails++; t.relearns++; t.guardT = 0; t.severeT = 0; t.goodT = 0; t.gTarget = 0;
+      if (t.fails >= this.opt.maxFails) {
+        t.state = 'disabled'; t.reason = 'kept getting worse - switched off'; t.reasonText = t.reason;
+        this.log('tone disabled', { id: t.id, f: +t.f.toFixed(2) });
+      } else {
+        t.state = 'queued'; this.probeQ.push(t.id);
+        this.log('divergence guard: re-learning tone', { id: t.id, f: +t.f.toFixed(2), fails: t.fails });
+      }
+    }
+
+    _compareTick(toneP) {
+      if (!this.cmpOn) return;
+      const L = this.opt.compareSec;
+      this.cmpT += this.dt;
+      if (this.cmpT >= L / 2) { this.cmpAcc.tone += toneP; this.cmpAcc.bb += this.bbMs; this.cmpAcc.n++; }
+      if (this.cmpT >= L) {
+        const a = this.cmpAcc;
+        if (a.n > 0) {
+          const rec = { state: this.cmpState, tonesDb: dbP(a.tone / a.n), bbDb: dbP(a.bb / a.n), t: +this.now.toFixed(1) };
+          this.compareLog.push(rec);
+          const prev = this.compareLog[this.compareLog.length - 2];
+          if (prev && prev.state !== rec.state) {
+            const on = rec.state === 'on' ? rec : prev, off = rec.state === 'on' ? prev : rec;
+            this.cmpStats = { tonesOnDb: on.tonesDb, tonesOffDb: off.tonesDb, tonesDiffDb: off.tonesDb - on.tonesDb, bbOnDb: on.bbDb, bbOffDb: off.bbDb, bbDiffDb: off.bbDb - on.bbDb };
+          }
+        }
+        this.cmpAcc = { tone: 0, bb: 0, n: 0 }; this.cmpT = 0;
+        this.cmpState = this.cmpState === 'on' ? 'off' : 'on';
+        this.cmpTarget = this.cmpState === 'on' ? 1 : 0;
+      }
+    }
+
+    // ---------------------------------------------------------------- speaker check
+    startSpeakerCheck() {
+      const sr = this.sr;
+      this.stage = 'check'; this.job = null; this.lockTones = []; this.tones = []; this.panicked = false;
+      const chirpLen = Math.round(0.3 * sr), recLen = Math.round(1.0 * sr);
+      const chirp = new Float64Array(chirpLen), f0 = 200, f1 = Math.min(4000, sr * 0.45);
+      for (let i = 0; i < chirpLen; i++) {
+        const t = i / sr, T = chirpLen / sr;
+        const ph = TWO_PI * (f0 * t + 0.5 * (f1 - f0) / T * t * t);
+        chirp[i] = Math.sin(ph) * 0.5 * (1 - Math.cos(TWO_PI * i / (chirpLen - 1)));
+      }
+      const amp = Math.min(0.25, Math.max(0.08, this.cap));
+      const freqs = [60, 80, 100, 120, 150, 200, 300, 400, 600, 800, 1000, 1500, 2000, 3000, 4000].filter((f) => f < sr * 0.45);
+      this.chk = { phase: 'quiet', n: 0, chirp, chirpAmp: amp * 1.2, rec: new Float32Array(recLen), rc: 0, freqs, idx: 0, amp, results: [], delay: null };
+      this.checkResult = null; this.n0 = this.n; this.now = 0;
+      this.log('speaker check start');
+    }
+
+    _check(mic, out) {
+      const n = mic.length, c = this.chk, sr = this.sr;
+      for (let i = 0; i < n; i++) {
+        const x = mic[i];
+        let o = 0;
+        if (c.phase === 'quiet') {
+          if (++c.n >= Math.round(0.5 * sr)) { c.phase = 'chirp'; c.n = 0; c.rc = 0; }
+        } else if (c.phase === 'chirp') {
+          if (c.n < c.chirp.length) o = c.chirp[c.n] * c.chirpAmp;
+          if (c.rc < c.rec.length) c.rec[c.rc++] = x;
+          c.n++;
+          if (c.rc >= c.rec.length) { this._finishChirp(); c.phase = 'sweep'; c.n = 0; this._nextSweep(); }
+        } else if (c.phase === 'sweep') {
+          if (c.job) {
+            o = c.job.step(x);
+            if (c.job.done) { this._finishSweep(); if (c.idx < c.freqs.length) this._nextSweep(); else { c.phase = 'done'; } }
+          }
+        } else if (c.phase === 'done') {
+          this.checkResult = { delayMs: c.delay, delayConfidence: c.delayConf, sr, tones: c.results, amp: c.amp };
+          this.log('speaker check done', { delayMs: c.delay });
+          this.chk = null; this.stage = 'idle'; for (let q = i; q < n; q++) out[q] = 0; this.n += n; return;
+        }
+        out[i] = Math.max(-0.9, Math.min(0.9, o));
+      }
+      this.n += n;
+      this.now = (this.n - this.n0) / sr;
+    }
+
+    _nextSweep() {
+      const c = this.chk, f = c.freqs[c.idx];
+      const fr = f + 8 < this.sr * 0.45 ? f + 8 : f - 8;
+      c.job = new LockJob(this.sr, [{ f, amp: c.amp, out: true }, { f: fr, amp: 0, out: false }], 0.2, 0.8, 0.1);
+      c.curF = f;
+    }
+    _finishSweep() {
+      const c = this.chk, r = c.job.result(), amp = c.amp;
+      const sig = cabs(r[0].re, r[0].im), noise = cabs(r[1].re, r[1].im);
+      c.results.push({ f: c.curF, gain: sig / amp, gainDb: dbA(sig / amp), snr: sig / Math.max(1e-12, noise), snrDb: dbA(sig / Math.max(1e-12, noise)), canProduce: sig / Math.max(1e-12, noise) >= 3 });
+      c.job = null; c.idx++;
+    }
+    _finishChirp() {
+      const c = this.chk, sr = this.sr;
+      const N = nextPow2(c.rec.length + c.chirp.length);
+      const f = new IncFFT(N);
+      const chirp = new Float64Array(c.chirp.length); for (let i = 0; i < chirp.length; i++) chirp[i] = c.chirp[i];
+      f.loadComplex(c.rec, null, false); f.run();
+      const Rr = Float64Array.from(f.re), Ri = Float64Array.from(f.im);
+      f.loadComplex(chirp, null, false); f.run();
+      // R = REC * conj(CHIRP); inverse via conjugation trick
+      const pr = new Float64Array(N), pi = new Float64Array(N);
+      for (let k = 0; k < N; k++) {
+        const ar = Rr[k], ai = Ri[k], br = f.re[k], bi = -f.im[k];
+        pr[k] = ar * br - ai * bi; pi[k] = ar * bi + ai * br;
+      }
+      f.loadComplex(pr, pi, true); f.run();
+      const maxLag = Math.round(0.6 * sr);
+      let best = 0, bl = 0, sum = 0;
+      for (let l = 0; l < maxLag; l++) { const m = cabs(f.re[l], -f.im[l]) / N; sum += m; if (m > best) { best = m; bl = l; } }
+      const meanAbs = sum / maxLag;
+      c.delayConf = best / Math.max(1e-18, meanAbs);
+      c.delay = c.delayConf > 8 ? +((bl / sr) * 1000).toFixed(1) : null;
+      this.log('chirp delay', { lagSamples: bl, ms: (bl / sr) * 1000, conf: c.delayConf });
+    }
+
+    // ---------------------------------------------------------------- reporting
+    getStatus() {
+      const bbDb = (ms) => (ms > 0 ? dbP(ms) : null);
+      const tones = this.tones.map((t) => {
+        const playing = t.state === 'playing';
+        const cur = t.lock ? dbP(t.e2s) : null;
+        return {
+          id: t.id, f: t.f, state: t.state, playable: t.state === 'playing' || t.state === 'settling' || t.state === 'probing' || t.state === 'queued',
+          reason: t.reasonText || t.reason, baseDb: t.baseDb, curDb: cur,
+          redDb: playing && cur !== null ? t.baseDb - cur : null,
+          Sdb: t.hasS ? dbA(cabs(t.Sr, t.Si)) : null, delayMs: t.delayMs, snr: t.snr, needAmp: t.needAmp,
+          fails: t.fails, tConv: t.tConv, tConvPlay: t.tConvPlay, aboveDb: t.aboveDb,
+        };
+      });
+      return {
+        stage: this.stage, mode: this.mode, t: this.now, noTones: this.noTones, panicked: this.panicked,
+        listenProgress: this.stage === 'listen' ? Math.min(1, this.lN / this.listenSamples) : 1,
+        learning: this.stage === 'learn' || !!this.job || this.probeQ.length > 0,
+        relearning: this.stage === 'play' && (!!this.job || this.probeQ.length > 0),
+        tones, bbBaseDb: bbDb(this.bbBaseMs), bbNowDb: bbDb(this.bbMs),
+        cap: this.cap, ramp: this.ramp, limited: this.limited,
+        compare: { on: this.cmpOn, state: this.cmpState, gain: this.cmp, stats: this.cmpStats, t: this.cmpT },
+        check: this.stage === 'check' && this.chk ? { phase: this.chk.phase, idx: this.chk.idx, of: this.chk.freqs.length } : null,
+        checkResult: this.checkResult,
+      };
+    }
+
+    getProfile() {
+      const tones = this.tones.filter((t) => t.hasS).map((t) => ({
+        f: t.f, A0: t.A0, baseDb: t.baseDb, S: [t.S0r, t.S0i], fS: t.fS, W: [t.Wr, t.Wi], delayMs: t.delayMs, snr: t.snr,
+        playable: t.state === 'playing' || t.state === 'settling', reason: t.reasonText || t.reason,
+      }));
+      return { version: 1, sr: this.sr, savedAt: Date.now(), tones };
+    }
+
+    exportData() {
+      return {
+        app: 'anc-bedroom', version: 1, sampleRate: this.sr, mode: this.mode, options: this.opt, cap: this.cap,
+        broadband: { baseDb: this.bbBaseMs > 0 ? dbP(this.bbBaseMs) : null, nowDb: this.bbMs > 0 ? dbP(this.bbMs) : null },
+        tones: this.tones.map((t) => ({
+          id: t.id, f: t.f, f0: t.f0, state: t.state, reason: t.reasonText || t.reason, A0: t.A0, baseDb: t.baseDb,
+          S: t.hasS ? { re: t.Sr, im: t.Si, mag: cabs(t.Sr, t.Si), db: dbA(cabs(t.Sr, t.Si)), phase: Math.atan2(t.Si, t.Sr) } : null,
+          W: { re: t.Wr, im: t.Wi }, snr: t.snr, delayMs: t.delayMs, needAmp: t.needAmp, fails: t.fails,
+          relearns: t.relearns, tConvSinceStart: t.tConv, tConvSincePlay: t.tConvPlay, fromProfile: t.fromProfile,
+          currentDb: t.lock ? dbP(t.e2s) : null, reductionDb: t.state === 'playing' ? t.baseDb - dbP(t.e2s) : null,
+        })),
+        series: this.series, compare: { log: this.compareLog, stats: this.cmpStats },
+        speakerCheck: this.checkResult, events: this.events,
+      };
+    }
+  }
+
+  const api = { ANCEngine, IncFFT, LockJob, aWeight, nextPow2, dbA, dbP };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.ANCCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this));
+</script>
+<script>
+'use strict';
+/* ---------------------------------------------------------------- audio plumbing */
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
+  del(k) { localStorage.removeItem(k); },
+};
+const PROFILE_KEY = 'anc.profile.v1', RUNS_KEY = 'anc.runs.v1', VOL_KEY = 'anc.volume.v1';
+
+let ctx = null, stream = null, node = null, wakeLock = null;
+let last = null;               // last status from the worklet
+let armed = false, running = false, mode = 'cold', lastProfileSave = 0, runLogged = false, lastCheck = null, runStartedAt = null;
+
+function volToCap(v) { return 0.05 + 0.95 * Math.pow(v / 100, 2); }
+
+/* The worklet module = anc-core.js text + this small processor (workletMain is stringified, never called on the page). */
+function workletMain() {
+  class ANCProc extends AudioWorkletProcessor {
+    constructor() {
+      super();
+      this.eng = new ANCCore.ANCEngine(sampleRate, {});
+      this.n = 0;
+      this.port.onmessage = (e) => {
+        const m = e.data;
+        if (m.cmd === 'start') { this.eng.setCap(m.cap); this.eng.start(m.profile || null); this.eng.setCompare(!!m.compare); }
+        else if (m.cmd === 'stop') this.eng.stop();
+        else if (m.cmd === 'check') { this.eng.setCap(m.cap); this.eng.startSpeakerCheck(); }
+        else if (m.cmd === 'cap') this.eng.setCap(m.v);
+        else if (m.cmd === 'compare') this.eng.setCompare(!!m.on);
+        else if (m.cmd === 'export') this.port.postMessage({ type: 'export', data: this.eng.exportData(), profile: this.eng.getProfile() });
+      };
+    }
+    process(inputs, outputs) {
+      const out = outputs[0][0], inp = inputs[0] && inputs[0][0];
+      if (!inp) { out.fill(0); return true; }
+      this.eng.process(inp, out);
+      if (++this.n % 12 === 0) this.port.postMessage({ type: 'status', s: this.eng.getStatus(), profile: this.n % 240 === 0 ? this.eng.getProfile() : null });
+      return true;
+    }
+  }
+  registerProcessor('anc-proc', ANCProc);
+}
+
+async function getCoreText() {
+  const el = $('core-inline');
+  if (el && el.textContent.trim().length > 1000) return el.textContent;
+  const r = await fetch('anc-core.js?v=1', { cache: 'no-cache' });
+  if (!r.ok) throw new Error('Could not load anc-core.js (HTTP ' + r.status + ')');
+  return r.text();
+}
+
+function showMsg(text, kind) {
+  const el = $(kind === 'info' ? 'info' : 'msg');
+  el.textContent = text || ''; el.classList.toggle('show', !!text);
+}
+
+async function ensureAudio() {
+  if (node) return;
+  if (!window.isSecureContext) throw new Error('This page must be opened over HTTPS (a link starting with https://). Browsers do not allow the microphone on plain http pages.');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser has no microphone access (getUserMedia missing). Use Chrome on Android.');
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+  } catch (e) {
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) throw new Error('Microphone permission was denied. Tap the lock icon next to the web address, choose Permissions, allow Microphone, then reload this page.');
+    if (e && e.name === 'NotFoundError') throw new Error('No microphone was found on this device.');
+    throw new Error('Could not open the microphone: ' + (e && e.message ? e.message : e));
+  }
+  ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  const text = (await getCoreText()) + '\n(' + workletMain.toString() + ')();\n';
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/javascript' }));
+  await ctx.audioWorklet.addModule(url);
+  URL.revokeObjectURL(url);
+  const src = ctx.createMediaStreamSource(stream);
+  node = new AudioWorkletNode(ctx, 'anc-proc', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+  node.port.onmessage = onWorkletMessage;
+  src.connect(node); node.connect(ctx.destination);
+  if (ctx.state !== 'running') await ctx.resume();
+  const trk = stream.getAudioTracks()[0];
+  window.__audioInfo = { sampleRate: ctx.sampleRate, baseLatency: ctx.baseLatency, outputLatency: ctx.outputLatency, trackSettings: trk && trk.getSettings ? trk.getSettings() : null };
+}
+
+function teardown() {
+  try { if (node) { node.port.onmessage = null; node.disconnect(); } } catch (e) { console.warn(e); }
+  try { if (stream) stream.getTracks().forEach((t) => t.stop()); } catch (e) { console.warn(e); }
+  try { if (ctx) ctx.close(); } catch (e) { console.warn(e); }
+  node = null; ctx = null; stream = null;
+  releaseWake();
+}
+
+async function takeWake() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); else showMsg('Note: this browser cannot keep the screen awake; keep the screen on yourself.', 'info'); }
+  catch (e) { showMsg('Could not keep the screen awake (' + e.name + '). Keep the screen on yourself.', 'info'); }
+}
+function releaseWake() { try { if (wakeLock) wakeLock.release(); } catch (e) { console.warn(e); } wakeLock = null; }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && running && !wakeLock) takeWake(); });
+
+/* ---------------------------------------------------------------- worklet messages */
+let pendingExport = null;
+function onWorkletMessage(e) {
+  const m = e.data;
+  if (m.type === 'status') {
+    last = m.s; render(m.s);
+    if (m.profile) maybeSaveProfile(m.profile);
+    if (m.s.stage !== 'idle') armed = true;          // ignore 'idle' statuses that were already in flight when we pressed a button
+    else if (armed && (running || checking)) finished();
+  } else if (m.type === 'export' && pendingExport) { pendingExport(m); pendingExport = null; }
+}
+
+function maybeSaveProfile(p) {
+  if (!running || !last || last.stage !== 'play' || !p || !p.tones.some((t) => t.playable)) return;
+  if (Date.now() - lastProfileSave < 8000) return;
+  lastProfileSave = Date.now();
+  store.set(PROFILE_KEY, p); showProfileInfo();
+}
+
+/* ---------------------------------------------------------------- actions */
+let checking = false;
+async function begin(useProfile) {
+  showMsg('');
+  try {
+    $('btnStart').disabled = true;
+    await ensureAudio();
+    await takeWake();
+    const profile = useProfile ? store.get(PROFILE_KEY, null) : null;
+    mode = profile ? 'profile' : 'cold'; armed = false; running = true; runLogged = false; lastProfileSave = 0; runStartedAt = Date.now();
+    node.port.postMessage({ cmd: 'start', cap: volToCap(+$('volume').value), profile, compare: compareOn });
+    setButtons();
+  } catch (err) {
+    showMsg(err.message || String(err));
+    teardown(); running = false; setButtons();
+  }
+}
+
+function stopAll() {
+  if (node) node.port.postMessage({ cmd: 'stop' });
+  logRun();
+  setTimeout(() => { if (running && !checking) { teardown(); running = false; setButtons(); setStatus('Stopped. Press START to run again.', ''); } }, 1500);
+}
+
+function finished() {   // engine went idle by itself (check done, or stop completed)
+  const wasCheck = checking;
+  if (checking) { checking = false; lastCheck = last && last.checkResult ? last.checkResult : lastCheck; renderCheck(); }
+  logRun(); teardown(); running = false; setButtons();
+  setStatus(wasCheck ? (lastCheck && lastCheck.tones ? 'Speaker check finished (see the table below).' : 'Speaker check did not finish.') : 'Stopped. Press START to run again.', '');
+  $('bar').style.width = '0%';
+}
+
+function logRun() {
+  if (runLogged || !last || !running) return;
+  runLogged = true;
+  const tones = (last.tones || []).filter((t) => t.state === 'playing' || t.tConv !== null);
+  if (!tones.length) return;
+  const runs = store.get(RUNS_KEY, []);
+  runs.push({ when: new Date(runStartedAt || Date.now()).toISOString(), mode, tones: last.tones.map((t) => ({ f: +t.f.toFixed(2), state: t.state, redDb: t.redDb, tConv: t.tConv, tConvPlay: t.tConvPlay })) });
+  while (runs.length > 30) runs.shift();
+  store.set(RUNS_KEY, runs);
+}
+
+async function speakerCheck() {
+  showMsg('');
+  if (running) { showMsg('Press STOP first, then run the speaker check.'); return; }
+  try {
+    $('btnCheck').disabled = true;
+    await ensureAudio(); await takeWake();
+    checking = true; armed = false; $('checkBox').textContent = 'Playing test sounds... keep the phone still and the room quiet.';
+    node.port.postMessage({ cmd: 'check', cap: volToCap(+$('volume').value) });
+  } catch (err) { showMsg(err.message || String(err)); teardown(); checking = false; }
+  setButtons();
+}
+
+async function saveResults() {
+  let exp = null;
+  if (node) {
+    exp = await new Promise((res) => { pendingExport = res; node.port.postMessage({ cmd: 'export' }); setTimeout(() => { if (pendingExport) { pendingExport = null; res(null); } }, 1500); });
+  }
+  const out = {
+    app: 'anc-bedroom', savedAt: new Date().toISOString(), userAgent: navigator.userAgent, audio: window.__audioInfo || null,
+    session: exp ? exp.data : null, learnedProfile: store.get(PROFILE_KEY, null), runs: store.get(RUNS_KEY, []),
+    speakerCheck: lastCheck || (last && last.checkResult) || null, lastStatus: last,
+  };
+  const blob = new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
+  a.href = URL.createObjectURL(blob); a.download = 'anc-results-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  showMsg('Saved "' + a.download + '" to your Downloads. Send that file for analysis.', 'info');
+}
+
+/* ---------------------------------------------------------------- rendering */
+const fmt = (x, d) => (x === null || x === undefined || !isFinite(x) ? '-' : x.toFixed(d === undefined ? 1 : d));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function setStatus(text, cls) { const el = $('status'); el.textContent = text; el.className = cls || ''; }
+
+function stageText(s) {
+  if (s.panicked) return ['Stopped for safety (audio problem). Press START to try again.', 'bad'];
+  switch (s.stage) {
+    case 'listen': return ['Listening to the room... ' + Math.round(s.listenProgress * 100) + '%', ''];
+    case 'learn': return ["Learning your phone's speaker...", ''];
+    case 'stopping': return ['Stopping...', ''];
+    case 'check': return s.check ? ['Speaker check: ' + (s.check.phase === 'sweep' ? 'testing pitch ' + (s.check.idx + 1) + ' of ' + s.check.of : 'measuring delay') + '...', ''] : ['Speaker check...', ''];
+    case 'play': {
+      if (s.noTones) return ['No steady hum found. Make sure the fans are on, then try again.', 'warn'];
+      const play = s.tones.filter((t) => t.state === 'playing');
+      if (!play.length) return ["Nothing this phone's speaker can cancel (see the list below).", 'warn'];
+      if (s.relearning) return ['Cancelling - re-learning a tone...', ''];
+      const settled = play.every((t) => t.tConv !== null);
+      return [settled ? 'Cancelling - holding steady' : 'Cancelling - tuning', settled ? 'good' : ''];
+    }
+    default: return ['Ready. Press START.', ''];
+  }
+}
+
+function toneBadge(t) {
+  switch (t.state) {
+    case 'playing': return ['Cancelling', 'ok'];
+    case 'settling': return ['Starting', ''];
+    case 'queued': case 'probing': return ['Learning', ''];
+    case 'unplayable': return t.reason && /needs more volume/.test(t.reason) ? ['Needs more volume', 'warn'] : ["Can't play this", 'bad'];
+    case 'disabled': return ['Switched off', 'bad'];
+    default: return [t.state, ''];
+  }
+}
+
+function render(s) {
+  const [txt, cls] = stageText(s); setStatus(txt, cls);
+  $('bar').style.width = (s.stage === 'listen' ? s.listenProgress * 100 : s.stage === 'play' ? 100 : s.stage === 'learn' ? 100 : s.stage === 'check' && s.check ? (s.check.idx / s.check.of) * 100 : 0) + '%';
+  const list = $('toneList');
+  if (!s.tones.length) list.innerHTML = '<div class="empty">' + (s.stage === 'listen' ? 'Listening...' : 'No steady tones.') + '</div>';
+  else list.innerHTML = s.tones.map((t) => {
+    const [b, bc] = toneBadge(t);
+    const red = t.redDb !== null && t.state === 'playing' ? '<div class="red" style="color:' + (t.redDb >= 10 ? 'var(--ok)' : t.redDb >= 3 ? 'var(--warn)' : 'var(--dim)') + '">' + (t.redDb >= 0 ? '-' : '+') + Math.abs(t.redDb).toFixed(0) + ' dB</div>' : '<div class="red" style="color:var(--dim)">-</div>';
+    const meta = (t.state === 'playing' || t.state === 'settling' ? 'before ' + fmt(t.baseDb, 0) + ' dB, now ' + fmt(t.curDb, 0) + ' dB' : 'before ' + fmt(t.baseDb, 0) + ' dB') +
+      (t.Sdb !== null ? ', speaker response ' + fmt(t.Sdb, 0) + ' dB' : '') + (t.delayMs ? ', delay ' + fmt(t.delayMs, 0) + ' ms' : '') + (t.fails ? ', retried ' + t.fails + 'x' : '');
+    return '<div class="tone"><div class="f">' + fmt(t.f, 1) + ' Hz<span class="pill ' + bc + '">' + esc(b) + '</span></div>' + red +
+      '<div class="meta">' + esc(meta) + (t.reason && t.state !== 'playing' ? '<br>' + esc(t.reason) : '') + '</div></div>';
+  }).join('');
+  // overall
+  $('bbBefore').textContent = fmt(s.bbBaseDb, 1) + ' dB';
+  $('bbNow').textContent = fmt(s.bbNowDb, 1) + ' dB';
+  const play = s.tones.filter((t) => t.state === 'playing' && t.curDb !== null);
+  if (play.length) {
+    const b = play.reduce((a, t) => a + Math.pow(10, t.baseDb / 10), 0), c = play.reduce((a, t) => a + Math.pow(10, t.curDb / 10), 0);
+    const r = 10 * Math.log10(b / c); $('tonesRed').textContent = (r >= 0 ? '-' : '+') + Math.abs(r).toFixed(1) + ' dB';
+  } else $('tonesRed').textContent = '-';
+  // volume hint
+  const need = s.tones.filter((t) => t.state === 'unplayable' && /needs more volume/.test(t.reason || ''));
+  $('volHint').textContent = need.length ? 'Some tones need more volume: ' + need.map((t) => fmt(t.f, 0) + ' Hz ' + t.reason.replace('needs more volume', '')).join('; ') + '. Slide to the right to include them.' : (s.limited ? 'The limiter is holding the output down (turn the volume limit up if the tones are not cancelling).' : '');
+  // compare
+  const c = s.compare;
+  if (c && c.on && s.stage === 'play') {
+    const st = c.stats;
+    $('compareBox').innerHTML = '<div class="cmpstate ' + (c.state === 'on' ? 'on' : 'off') + '">Cancellation: ' + (c.state === 'on' ? 'ON' : 'OFF') + '</div>' +
+      (st ? '<div class="kv"><span>Hum tones, ON vs OFF</span><span class="big-num">' + fmt(st.tonesDiffDb, 1) + ' dB</span></div><div class="kv"><span>Everything, ON vs OFF</span><span class="big-num">' + fmt(st.bbDiffDb, 1) + ' dB</span></div>' : '<div class="dim">Measuring the first on/off pair...</div>');
+  } else if (!compareOn) $('compareBox').textContent = 'Off. Press the button while cancelling is running.';
+  if (s.stage === 'idle' && s.checkResult && checking) { lastCheck = s.checkResult; renderCheck(); }
+}
+
+function renderCheck() {
+  const r = lastCheck; const el = $('checkBox');
+  if (!r) { el.textContent = ''; return; }
+  const rows = r.tones.map((t) => '<tr><td>' + t.f + ' Hz</td><td>' + fmt(t.gainDb, 0) + ' dB</td><td>' + fmt(t.snrDb, 0) + ' dB</td><td style="color:' + (t.canProduce ? 'var(--ok)' : 'var(--bad)') + '">' + (t.canProduce ? 'yes' : 'too weak') + '</td></tr>').join('');
+  el.innerHTML = '<div class="kv"><span>Round-trip delay</span><span class="big-num">' + (r.delayMs === null ? 'not measured' : fmt(r.delayMs, 0) + ' ms') + '</span></div>' +
+    '<table><tr><th>Pitch</th><th>Heard level</th><th>Above noise</th><th>Usable</th></tr>' + rows + '</table>' +
+    '<div class="dim">"Heard level" = how loud the microphone hears each test tone (0 dB = same as the signal sent). Low pitches are usually weak on a phone speaker.</div>';
+}
+
+function showProfileInfo() {
+  const p = store.get(PROFILE_KEY, null);
+  const ok = p && p.tones && p.tones.some((t) => t.playable);
+  $('btnQuick').style.display = ok ? 'block' : 'none';
+  $('btnClear').disabled = !p;
+  $('profileInfo').textContent = ok ? 'Learned profile saved ' + new Date(p.savedAt).toLocaleString() + ': ' + p.tones.filter((t) => t.playable).map((t) => Math.round(t.f) + ' Hz').join(', ') + '. Use "Quick start" only if the phone is in the same place with the same fans.' : '';
+}
+
+let compareOn = false;
+function setButtons() {
+  const busy = running || checking;
+  const b = $('btnStart');
+  b.textContent = running ? 'STOP' : 'START'; b.classList.toggle('stop', running); b.disabled = checking;
+  $('btnQuick').disabled = busy; $('btnCheck').disabled = busy;
+}
+
+/* ---------------------------------------------------------------- wiring */
+$('btnStart').addEventListener('click', () => { if (running) stopAll(); else begin(false); });
+$('btnQuick').addEventListener('click', () => begin(true));
+$('btnCheck').addEventListener('click', speakerCheck);
+$('btnSave').addEventListener('click', () => { saveResults().catch((e) => showMsg('Could not save: ' + e.message)); });
+$('btnClear').addEventListener('click', () => { store.del(PROFILE_KEY); showProfileInfo(); showMsg('Learned profile deleted.', 'info'); });
+$('btnCompare').addEventListener('click', () => {
+  compareOn = !compareOn; $('btnCompare').classList.toggle('on', compareOn);
+  $('btnCompare').textContent = compareOn ? 'Compare is ON (press to stop comparing)' : 'Compare: switch cancellation on / off every 5 s';
+  if (node) node.port.postMessage({ cmd: 'compare', on: compareOn });
+  if (!compareOn) $('compareBox').textContent = 'Off. Press the button while cancelling is running.';
+});
+$('volume').addEventListener('input', () => {
+  const v = +$('volume').value, cap = volToCap(v);
+  $('volLabel').textContent = Math.round(cap * 100) + '%'; store.set(VOL_KEY, v);
+  if (node) node.port.postMessage({ cmd: 'cap', v: cap });
+});
+(function init() {
+  const v = store.get(VOL_KEY, 40); $('volume').value = v; $('volLabel').textContent = Math.round(volToCap(v) * 100) + '%';
+  showProfileInfo(); setButtons();
+  if (!window.isSecureContext) showMsg('This page is not on HTTPS, so the browser will block the microphone. Open the https:// link instead.');
+})();
+window.__ancTest = { render, stageText, toneBadge, volToCap, renderCheck, setLastCheck: (r) => { lastCheck = r; } };
+</script>
+</body>
+</html>
